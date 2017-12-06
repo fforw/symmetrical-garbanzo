@@ -1,7 +1,9 @@
 Question-Effect
 ===============
 
-Question effect for the team17 video.
+![effect screenshot](https://intern.quinscape.de/bitbucket/projects/XCD/repos/q-effect/raw/qfx.jpg?at=refs%2Fheads%2Fmaster)
+
+Question effect for the team17 video (used as mask).
 
 Uses a shapes.svg file to provide the points. The SVG shapes are adaptively linearized by invoking tooling/convert.js which converts the data into a data.js moule.
 
