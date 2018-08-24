@@ -33,9 +33,9 @@ function noisy(x,y)
     x -= halfWidth;
     y -= halfHeight;
 
-    const angle = Math.atan2(x ,y) + angleOffset;
+    const angle = Math.atan2(y ,x) + angleOffset;
 
-    const d = Math.sqrt(x*x + y * y) * 0.005;
+    const d = Math.sqrt( x * x + y * y) * 0.005;
     
     const nx = Math.cos(angle) * d;
     const ny = Math.sin(angle) * d;
@@ -61,20 +61,36 @@ for (let i = 0; i < groups.length; i++)
 let logged = false;
 let count = 0;
 
+window.marked = 0;
+let printed = -1;
+
 function mainLoop()
 {
+    if (count === 0)
+    {
+        xPos += 0.0011;
+        yPos += 0.0007;
+
+        angleOffset += 0.005;
+        angleOffset2 += 0.003;
+
+        noiseStrength = (0.7 + Math.sin(angleOffset2) * 0.3) * width * 0.02;
+    }
+
     const {aabb,groups} = DATA;
 
     const scaleFactor = Math.min(
         width  / (aabb.maxX - aabb.minX),
         height  / (aabb.maxY - aabb.minY)
-    ) * 2;
+    );
 
     ctx.fillStyle = bg;
     ctx.fillRect(0,0,width,height);
 
     const hw = halfWidth * 1.2 - (aabb.maxX - aabb.minX) * scaleFactor / 2;
     const hh = halfHeight - (aabb.maxY - aabb.minY) * scaleFactor / 2;
+
+    let pathCount = 0;
 
     for (let i = 0; i < groups.length; i++)
     {
@@ -85,33 +101,40 @@ function mainLoop()
         for (let j = 0; j < paths.length; j++)
         {
             const array = paths[j];
-
-
             ctx.beginPath();
-            const {x0,y0} =  noisy( hw + (array[0] - aabb.minX) * scaleFactor, hh + (array[1] - aabb.minY) * scaleFactor);
+            const { x : x0, y : y0} =  noisy( hw + (array[0] - aabb.minX) * scaleFactor, hh + (array[1] - aabb.minY) * scaleFactor);
 
             ctx.moveTo( x0, y0 );
+
+            if (pathCount === window.marked)
+            {
+                ctx.strokeStyle = "#f00";
+                if (printed !== window.marked)
+                {
+                    console.log("#" + window.marked, array);
+                    printed = window.marked;
+                }
+            } else
+            {
+                ctx.strokeStyle = "#000";
+            }
 
             for (let k = 2; k < array.length; k += 2)
             {
                 const { x, y } = noisy(hw + (array[k    ] - aabb.minX) * scaleFactor, hh + (array[k + 1] - aabb.minY) * scaleFactor);
                 ctx.lineTo( x, y );
             }
-            ctx.fill();
+
+            ctx.stroke();
+            pathCount++;
         }
     }
 
-    xPos += 0.0011;
-    yPos += 0.0007;
 
-    angleOffset += 0.005;
-    angleOffset2 += 0.003;
-
-    noiseStrength = (0.7 + Math.sin(angleOffset2) * 0.3) * width * 0.02;
-
+    count++;
     if (capturer)
     {
-        if (HARD_FRAME_LIMIT && count++ > HARD_FRAME_LIMIT)
+        if (HARD_FRAME_LIMIT && count > HARD_FRAME_LIMIT)
         {
             capturer.capture(canvas);
 
@@ -139,7 +162,6 @@ ready(function ()
 
     canvas.width = width;
     canvas.height = height;
-
 
     ctx = canvas.getContext("2d");
 

@@ -6,9 +6,17 @@ const jsdom = require("jsdom").JSDOM;
 
 const AABB = require("./aabb");
 
-const linearize = require("./linearize");
+const AdaptiveLinearization = require("adaptive-linearization");
 
-const LINEARIZATION_THRESHOLD = 0.15;
+const Math__abs = Math.abs;
+
+const OPTS = {
+    approximationScale: 0.5,
+    angleTolerance: 0.4
+};
+
+const MAX_LINE = 8;
+
 
 const aabb = new AABB();
 
@@ -18,127 +26,40 @@ function linearizePath(desc)
 
     const points = [];
 
-    const startLine = (x,y) =>
-    {
-        if (typeof x !== "number" || typeof y !== "number")
-        {
-            throw new Error("not a number" + x + ", " + y);
-        }
+    let prevIndex = Infinity;
 
-        points.push(x,y);
-        aabb.extend(x, y);
-    };
-
-    const drawLine = (x1,y1,x2,y2) =>
+    let drawLine = (x1, y1, x2, y2, index) =>
     {
-        if (typeof x2 !== "number" || typeof y2 !== "number")
+        //console.log("drawLine", JSON.stringify({x1, y1, x2, y2, index}));
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        if (Math__abs(dx) > MAX_LINE || Math__abs(dy) > MAX_LINE || Math.sqrt(dx*dx+dy*dy) > MAX_LINE)
         {
-            throw new Error("not a number" + x2 + ", " + y2);
+            const xMid = (x1 + x2)/2;
+            const yMid = (y1 + y2)/2;
+
+            drawLine(x1,y1,xMid,yMid, index);
+            drawLine(xMid,yMid,x2,y2, index);
+            return;
         }
+        
+        if (index < prevIndex)
+        {
+            points.push(x1, y1);
+            aabb.extend(x1, y1);
+        }
+        prevIndex = index;
+
         points.push(x2,y2);
         //console.log("CONSUME", x1, y1, x2, y2);
         aabb.extend(x2, y2);
     };
+    
+    const al = new AdaptiveLinearization(drawLine, OPTS);
 
-    path.iterate(function (segment, index, curX, curY)
-    {
-        const command = segment[0];
-
-        let i, x, y, x2, y2, x3, y3, x4, y4, short;
-
-        console.log({segment});
-
-        //noinspection FallThroughInSwitchStatementJS
-        switch (command)
-        {
-            case "M":
-                startLine(segment[1],segment[2]);
-                for (i = 3; i < segment.length; i += 2)
-                {
-                    x = segment[i];
-                    y = segment[i + 1];
-
-                    drawLine(curX, curY, x, y);
-
-                    curX = x;
-                    curY = y;
-                    aabb.extend(x,y);
-                }
-                    break;
-            case "L":
-                startLine(segment[1],segment[2]);
-                for (i = 3; i < segment.length; i += 2)
-                {
-                    x = segment[i];
-                    y = segment[i + 1];
-
-                    drawLine(curX, curY, x, y);
-
-                    curX = x;
-                    curY = y;
-                    aabb.extend(x,y);
-                }
-                break;
-            case "H":
-
-                x = segment[1];
-                y = curY;
-
-                drawLine(curX, curY, x, y);
-
-                curX = x;
-
-                aabb.extend(x,y);
-                break;
-            case "V":
-
-                x = curX;
-                y = segment[1];
-
-                drawLine(curX, curY, x, y);
-
-                curY = y;
-                break;
-            case "Z":
-                break;
-            case "Q":
-                short = true;
-            // intentional fallthrough
-            case "C":
-                //console.log("C segment", segment);
-                let step = short ? 4 : 6;
-
-                startLine(curX,curY);
-
-                for (i = 1; i < segment.length; i += step)
-                {
-                    x = curX;
-                    y = curY;
-                    x2 = segment[i];
-                    y2 = segment[i + 1];
-                    x3 = short ? x2 : segment[i + 2];
-                    y3 = short ? y2 : segment[i + 3];
-                    x4 = short ? segment[i + 2] : segment[i + 4];
-                    y4 = short ? segment[i + 3] : segment[i + 5];
-
-                    linearize(
-                        x,y,
-                        x2,y2,
-                        x3,y3,
-                        x4,y4,
-                        LINEARIZATION_THRESHOLD,
-                        drawLine
-                    );
-
-                    curX = x;
-                    curY = y;
-                }
-                break;
-            default:
-                throw new Error("path command '" + command + "' not supported yet");
-
-        }
-    }, false);
+    path.iterate(al.svgPathIterator, false);
 
     return points;
 }
@@ -150,8 +71,7 @@ const document = window.document;
 
 let sum = 0;
 
-const groups = Array.prototype.map.call(document.querySelectorAll("g"), (groupElem, index) => {
-
+const groups = Array.prototype.map.call(document.querySelectorAll("g:not([id='layer1'])"), (groupElem, index) => {
 
     return {
         color: (index & 1) === 0 ? "#000" : "#d0d",

@@ -1,3 +1,28 @@
+
+const DEFAULT_OPTS = {
+
+    /**
+     * Maximum error value we allow until we give up and call it a line.
+     */
+    threshold: 0.25,
+    /**
+     * Maximum line length in SVG units. If set to a value higher than 0, straight lines above that length
+     * will be chopped down to shorter lines.
+     *
+     * This is useful if you deform the shapes so that formerly straight lines are not straight anymore and would
+     * bend weird if not chopped up into shorter pieces.
+     */
+    maxLine: 0
+};
+
+
+
+function AdaptiveLinearization(opts)
+{
+
+}
+
+
 function adaptiveLinearization(x1, y1, x2, y2, x3, y3, x4, y4, threshold, lineConsumer)
 {
     if(Math.abs(x1 + x3 - x2 - x2) +

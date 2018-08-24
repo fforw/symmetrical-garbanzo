@@ -11,7 +11,8 @@
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "svgpath": "^2.2.1",
-    "symbol-loader": "^0.2.2"
+    "symbol-loader": "^0.2.2",
+    "adaptive-linearization": "^1.0.3"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
